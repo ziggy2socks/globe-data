@@ -1,0 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #edecea; }
+
+:root {
+  --bg: #edecea;
+  --ink: #1a1a1a;
+  --ink-muted: #666;
+  --font-label: 'Barlow Condensed', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.cesium-widget-credits { display: none !important; }
+.cesium-toolbar { display: none !important; }
