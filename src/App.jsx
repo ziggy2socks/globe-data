@@ -42,25 +42,14 @@ export default function App() {
         creditContainer: document.createElement('div'),
       })
 
-      // Paper aesthetic
+      // Paper aesthetic — use show=false, never assign false or destroy
       const scene = v.scene
-      scene.skyBox.destroy()
-      scene.skyBox = false
-      scene.sun.destroy()
-      scene.sun = false
+      scene.skyBox.show = false
+      scene.sun.show = false
       scene.moon.show = false
       scene.skyAtmosphere.show = false
-      scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
       scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
       scene.globe.enableLighting = false
-      // Belt-and-suspenders: CSS background on the canvas element
-      if (v.canvas) {
-        v.canvas.style.background = '#edecea'
-      }
-      // And on the cesium-widget div
-      if (containerRef.current) {
-        containerRef.current.style.background = '#edecea'
-      }
 
       // Starting camera: tilted over North America
       v.camera.setView({
