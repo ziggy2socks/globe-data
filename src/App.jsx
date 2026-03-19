@@ -23,6 +23,8 @@ export default function App() {
 
     async function init() {
       if (destroyed) return
+      console.log('Cesium init starting, container:', containerRef.current)
+      console.log('Ion token present:', !!import.meta.env.VITE_CESIUM_ION_TOKEN)
 
       v = new Cesium.Viewer(containerRef.current, {
         baseLayer: false,           // no Bing imagery
@@ -80,7 +82,10 @@ export default function App() {
       if (!destroyed) setViewer(v)
     }
 
-    init().catch(err => console.error('Cesium init failed:', err))
+    init().catch(err => {
+      console.error('Cesium init failed:', err)
+      console.error(err.stack)
+    })
 
     return () => {
       destroyed = true
