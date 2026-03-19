@@ -21,95 +21,84 @@ export default function App() {
     let v = null
     let destroyed = false
 
-    async function init() {
-      if (destroyed) return
-
-      v = new Cesium.Viewer(containerRef.current, {
-        baseLayer: false,
-        terrain: Cesium.Terrain.fromWorldTerrain(),
-        // Set background color in constructor options where possible
-        contextOptions: { webgl: { alpha: false } },
-        animation: false,
-        baseLayerPicker: false,
-        fullscreenButton: false,
-        geocoder: false,
-        homeButton: false,
-        infoBox: false,
-        sceneModePicker: false,
-        selectionIndicator: false,
-        timeline: false,
-        navigationHelpButton: false,
-        creditContainer: document.createElement('div'),
-      })
-
-      // Paper aesthetic — use show=false, never assign false or destroy
-      const scene = v.scene
-      scene.skyBox.show = false
-      scene.sun.show = false
-      scene.moon.show = false
-      scene.skyAtmosphere.show = false
-      scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
-      scene.globe.enableLighting = false
-
-      // Starting camera: tilted over North America
-      v.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
-        orientation: {
-          heading: Cesium.Math.toRadians(0),
-          pitch: Cesium.Math.toRadians(-45),
-          roll: 0,
-        },
-      })
-
-      // Click-to-inspect
-      const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
-      handler.setInputAction((click) => {
-        const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
-        if (!cartesian) return
-        const carto = Cesium.Cartographic.fromCartesian(cartesian)
-        setInspecting({
-          lat: Cesium.Math.toDegrees(carto.latitude).toFixed(3),
-          lon: Cesium.Math.toDegrees(carto.longitude).toFixed(3),
-          elevation: (carto.height / 1000).toFixed(1),
-        })
-      }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
-
-      // Loading indicator
-      v.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
-        if (q === 0) setLoading(false)
-      })
-
-      if (!destroyed) setViewer(v)
-    }
-
-    init().catch(err => {
-      console.error('Cesium init failed:', err)
-      console.error(err.stack)
+    // Init Cesium viewer — no terrain option, set provider after
+    v = new Cesium.Viewer(containerRef.current, {
+      baseLayer: false,
+      animation: false,
+      baseLayerPicker: false,
+      fullscreenButton: false,
+      geocoder: false,
+      homeButton: false,
+      infoBox: false,
+      sceneModePicker: false,
+      selectionIndicator: false,
+      timeline: false,
+      navigationHelpButton: false,
+      creditContainer: document.createElement('div'),
     })
+
+    // Aesthetic config
+    v.scene.skyBox.show = false
+    v.scene.sun.show = false
+    v.scene.moon.show = false
+    v.scene.skyAtmosphere.show = false
+    v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
+    v.scene.globe.enableLighting = false
+
+    // Camera: tilted view over North America
+    v.camera.setView({
+      destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-45),
+        roll: 0,
+      },
+    })
+
+    // Set terrain provider async (after viewer is alive)
+    Cesium.CesiumTerrainProvider.fromIonAssetId(1).then((provider) => {
+      if (!destroyed && v && !v.isDestroyed()) {
+        v.terrainProvider = provider
+      }
+    }).catch(e => console.warn('Terrain load failed:', e))
+
+    // Click-to-inspect
+    const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
+    handler.setInputAction((click) => {
+      const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
+      if (!cartesian) return
+      const carto = Cesium.Cartographic.fromCartesian(cartesian)
+      setInspecting({
+        lat: Cesium.Math.toDegrees(carto.latitude).toFixed(3),
+        lon: Cesium.Math.toDegrees(carto.longitude).toFixed(3),
+        elevation: (carto.height / 1000).toFixed(1),
+      })
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+
+    // Loading
+    v.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
+      if (q === 0) setLoading(false)
+    })
+
+    setViewer(v)
 
     return () => {
       destroyed = true
+      handler.destroy()
       if (v && !v.isDestroyed()) v.destroy()
     }
   }, [])
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#edecea' }}>
-      <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#edecea' }} />
+      <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
 
       {loading && (
         <div style={{
-          position: 'absolute',
-          top: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          fontFamily: 'Barlow Condensed, sans-serif',
-          fontSize: 11,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: '#1a1a1a',
-          opacity: 0.4,
-          pointerEvents: 'none',
+          position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)',
+          fontFamily: 'Barlow Condensed, sans-serif', fontSize: 11,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          color: '#1a1a1a', opacity: 0.4, pointerEvents: 'none',
         }}>
           Loading terrain…
         </div>
@@ -133,20 +122,12 @@ function TemperatureLegend() {
   ]
   return (
     <div style={{
-      position: 'absolute',
-      bottom: 88,
-      left: 24,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 4,
-      background: 'rgba(237,236,234,0.88)',
-      backdropFilter: 'blur(6px)',
-      padding: '10px 14px',
-      borderRadius: 4,
+      position: 'absolute', bottom: 88, left: 24,
+      display: 'flex', flexDirection: 'column', gap: 4,
+      background: 'rgba(237,236,234,0.88)', backdropFilter: 'blur(6px)',
+      padding: '10px 14px', borderRadius: 4,
       border: '1px solid rgba(0,0,0,0.07)',
-      fontFamily: 'JetBrains Mono, monospace',
-      fontSize: 11,
-      color: '#1a1a1a',
+      fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#1a1a1a',
     }}>
       <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.45, marginBottom: 4 }}>
         SOIL TEMP °C
