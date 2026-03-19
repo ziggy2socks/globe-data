@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import * as Cesium from 'cesium'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
+import './cesium-overrides.css'
 
 Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
@@ -26,12 +27,13 @@ export default function App() {
     v.imageryLayers.removeAll()
     v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
 
-    // Step 2: paper background
+    // Step 2: paper background — hide space elements, CSS handles the color
     v.scene.skyBox.show = false
     v.scene.sun.show = false
     v.scene.moon.show = false
     v.scene.skyAtmosphere.show = false
-    v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+    // backgroundColor only works when skyBox is fully disabled;
+    // cesium-overrides.css sets background on the canvas element as fallback
 
     return () => { if (!v.isDestroyed()) v.destroy() }
   }, [])

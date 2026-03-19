@@ -1,3 +1,4 @@
+/* Hide Cesium UI chrome */
 .cesium-viewer-bottom { display: none !important; }
 .cesium-viewer-toolbar { display: none !important; }
 .cesium-widget-credits { display: none !important; }
@@ -5,10 +6,11 @@
 .cesium-viewer-animationContainer { display: none !important; }
 .cesium-viewer-timelineContainer { display: none !important; }
 
-/* Paper background — override Cesium's black space */
-.cesium-widget,
-.cesium-widget canvas,
-.cesium-viewer,
-.cesium-viewer-cesiumWidgetContainer {
+/*
+  Paper background — Cesium renders into a canvas with alpha.
+  Setting background on the canvas parent lets the color show through
+  wherever Cesium isn't drawing (the "space" area around the globe).
+*/
+.cesium-widget > canvas {
   background: #edecea !important;
 }
