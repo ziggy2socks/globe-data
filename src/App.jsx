@@ -29,9 +29,7 @@ export default function App() {
     v.imageryLayers.removeAll()
     v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
 
-    // Step 2: paper background (skyBox/skyAtmosphere disabled in constructor above)
-    v.scene.sun.show = false
-    v.scene.moon.show = false
+    // Step 2: paper background (skyBox disabled in constructor; sun/moon may not exist)
 
     return () => { if (!v.isDestroyed()) v.destroy() }
   }, [])
