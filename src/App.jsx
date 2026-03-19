@@ -21,8 +21,7 @@ export default function App() {
       timeline: false,
       navigationHelpButton: false,
       creditContainer: document.createElement('div'),
-      skyBox: false,         // pass false here — the ONLY way to truly disable skybox
-      skyAtmosphere: false,
+      skyBox: false,
       contextOptions: { webgl: { alpha: true } },
     })
 
