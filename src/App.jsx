@@ -91,6 +91,7 @@ export default function App() {
         timeline={false}
         navigationHelpButton={false}
         creditContainer={document.createElement('div')}
+        imageryProvider={false}
       >
         <Globe
           enableLighting={false}
