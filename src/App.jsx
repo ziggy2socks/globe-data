@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
-import { Viewer, Globe } from 'resium'
 import WeekScrubber from './components/WeekScrubber.jsx'
 import Inspector from './components/Inspector.jsx'
 import { useTemperatureLayer } from './hooks/useTemperatureLayer.js'
@@ -9,40 +8,49 @@ import './cesium-overrides.css'
 Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
 export default function App() {
-  // Use a state-based viewer ref so changes trigger re-render
+  const containerRef = useRef(null)
   const [viewer, setViewer] = useState(null)
-  const viewerRef = useRef(null)
   const [week, setWeek] = useState(14)
   const [inspecting, setInspecting] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Temperature layer — only activates once viewer is in state
   useTemperatureLayer(viewer, week)
 
-  // Callback ref: fires when Resium mounts the viewer component
-  const setViewerRef = useCallback((node) => {
-    viewerRef.current = node
-    if (node?.cesiumElement) {
-      setViewer(node.cesiumElement)
-    }
-  }, [])
-
   useEffect(() => {
-    if (!viewer) return
+    if (!containerRef.current || viewer) return
 
-    // Strip sky / atmosphere for paper look
-    try {
-      viewer.scene.skyBox.show = false
-      viewer.scene.sun.show = false
-      viewer.scene.moon.show = false
-      viewer.scene.skyAtmosphere.show = false
-      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
-    } catch (e) {
-      // scene may not be ready on first call; Cesium handles this gracefully
-    }
+    const v = new Cesium.Viewer(containerRef.current, {
+      // No default imagery — we supply our own
+      baseLayer: false,
+      // Terrain streaming from Ion
+      terrainProvider: new Cesium.CesiumTerrainProvider({
+        url: Cesium.IonResource.fromAssetId(1),
+      }),
+      // Strip all UI chrome
+      animation: false,
+      baseLayerPicker: false,
+      fullscreenButton: false,
+      geocoder: false,
+      homeButton: false,
+      infoBox: false,
+      sceneModePicker: false,
+      selectionIndicator: false,
+      timeline: false,
+      navigationHelpButton: false,
+      creditContainer: document.createElement('div'),
+    })
 
-    // Starting camera: tilted view centered on North America
-    viewer.camera.setView({
+    // Paper aesthetic
+    v.scene.skyBox.show = false
+    v.scene.sun.show = false
+    v.scene.moon.show = false
+    v.scene.skyAtmosphere.show = false
+    v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+    v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
+    v.scene.globe.enableLighting = false
+
+    // Starting camera: tilted over North America
+    v.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
       orientation: {
         heading: Cesium.Math.toRadians(0),
@@ -52,9 +60,9 @@ export default function App() {
     })
 
     // Click-to-inspect
-    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
+    const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
     handler.setInputAction((click) => {
-      const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid)
+      const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
       if (!cartesian) return
       const carto = Cesium.Cartographic.fromCartesian(cartesian)
       setInspecting({
@@ -64,40 +72,24 @@ export default function App() {
       })
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
 
-    // Track tile loading
-    const tileListener = viewer.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
+    // Loading state
+    const tileUnsub = v.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
       if (q === 0) setLoading(false)
     })
 
+    setViewer(v)
+
     return () => {
       handler.destroy()
-      tileListener()
+      tileUnsub()
+      if (!v.isDestroyed()) v.destroy()
     }
-  }, [viewer])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Viewer
-        ref={setViewerRef}
-        full
-        animation={false}
-        baseLayerPicker={false}
-        fullscreenButton={false}
-        geocoder={false}
-        homeButton={false}
-        infoBox={false}
-        sceneModePicker={false}
-        selectionIndicator={false}
-        timeline={false}
-        navigationHelpButton={false}
-        creditContainer={document.createElement('div')}
-        imageryProvider={false}
-      >
-        <Globe
-          enableLighting={false}
-          baseColor={Cesium.Color.fromCssColorString('#d8d4cf')}
-        />
-      </Viewer>
+      {/* Cesium mounts directly into this div */}
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
       {loading && (
         <div style={{
