@@ -23,12 +23,12 @@ export default function App() {
 
     async function init() {
       if (destroyed) return
-      console.log('Cesium init starting, container:', containerRef.current)
-      console.log('Ion token present:', !!import.meta.env.VITE_CESIUM_ION_TOKEN)
 
       v = new Cesium.Viewer(containerRef.current, {
-        baseLayer: false,           // no Bing imagery
+        baseLayer: false,
         terrain: Cesium.Terrain.fromWorldTerrain(),
+        // Set background color in constructor options where possible
+        contextOptions: { webgl: { alpha: false } },
         animation: false,
         baseLayerPicker: false,
         fullscreenButton: false,
@@ -42,14 +42,19 @@ export default function App() {
         creditContainer: document.createElement('div'),
       })
 
-      // Paper aesthetic
-      v.scene.skyBox.show = false
-      v.scene.sun.show = false
-      v.scene.moon.show = false
-      v.scene.skyAtmosphere.show = false
-      v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
-      v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
-      v.scene.globe.enableLighting = false
+      // Paper aesthetic — set synchronously before first render
+      const scene = v.scene
+      scene.skyBox.show = false
+      scene.sun.show = false
+      scene.moon.show = false
+      scene.skyAtmosphere.show = false
+      scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+      scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
+      scene.globe.enableLighting = false
+      // Force background color — Cesium uses this for the space behind the globe
+      v.scene.postRender.addEventListener(() => {
+        scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+      })
 
       // Starting camera: tilted over North America
       v.camera.setView({
