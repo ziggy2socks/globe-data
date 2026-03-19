@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Cesium from 'cesium'
 import { Viewer, Globe } from 'resium'
 import WeekScrubber from './components/WeekScrubber.jsx'
@@ -9,29 +9,40 @@ import './cesium-overrides.css'
 Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN
 
 export default function App() {
+  // Use a state-based viewer ref so changes trigger re-render
+  const [viewer, setViewer] = useState(null)
   const viewerRef = useRef(null)
-  const [viewerReady, setViewerReady] = useState(false)
-  const [week, setWeek] = useState(14)  // start at ~April (spring thaw)
+  const [week, setWeek] = useState(14)
   const [inspecting, setInspecting] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Wire temperature layer
-  const viewer = viewerRef.current?.cesiumElement ?? null
-  useTemperatureLayer(viewerReady ? viewer : null, week)
+  // Temperature layer — only activates once viewer is in state
+  useTemperatureLayer(viewer, week)
+
+  // Callback ref: fires when Resium mounts the viewer component
+  const setViewerRef = useCallback((node) => {
+    viewerRef.current = node
+    if (node?.cesiumElement) {
+      setViewer(node.cesiumElement)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!viewerRef.current?.cesiumElement) return
-    const v = viewerRef.current.cesiumElement
+    if (!viewer) return
 
-    // Strip sky / atmosphere
-    v.scene.skyBox.show = false
-    v.scene.sun.show = false
-    v.scene.moon.show = false
-    v.scene.skyAtmosphere.show = false
-    v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+    // Strip sky / atmosphere for paper look
+    try {
+      viewer.scene.skyBox.show = false
+      viewer.scene.sun.show = false
+      viewer.scene.moon.show = false
+      viewer.scene.skyAtmosphere.show = false
+      viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+    } catch (e) {
+      // scene may not be ready on first call; Cesium handles this gracefully
+    }
 
-    // Starting camera: slight tilt over North America
-    v.camera.setView({
+    // Starting camera: tilted view centered on North America
+    viewer.camera.setView({
       destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
       orientation: {
         heading: Cesium.Math.toRadians(0),
@@ -41,9 +52,9 @@ export default function App() {
     })
 
     // Click-to-inspect
-    const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
     handler.setInputAction((click) => {
-      const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
+      const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid)
       if (!cartesian) return
       const carto = Cesium.Cartographic.fromCartesian(cartesian)
       setInspecting({
@@ -53,19 +64,21 @@ export default function App() {
       })
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
 
-    // Mark viewer ready after first render
-    v.scene.globe.tileLoadProgressEvent.addEventListener((queueLength) => {
-      if (queueLength === 0) setLoading(false)
+    // Track tile loading
+    const tileListener = viewer.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
+      if (q === 0) setLoading(false)
     })
 
-    setViewerReady(true)
-    return () => handler.destroy()
-  }, [])
+    return () => {
+      handler.destroy()
+      tileListener()
+    }
+  }, [viewer])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Viewer
-        ref={viewerRef}
+        ref={setViewerRef}
         full
         animation={false}
         baseLayerPicker={false}
@@ -85,7 +98,6 @@ export default function App() {
         />
       </Viewer>
 
-      {/* Loading indicator */}
       {loading && (
         <div style={{
           position: 'absolute',
@@ -98,6 +110,7 @@ export default function App() {
           textTransform: 'uppercase',
           color: '#1a1a1a',
           opacity: 0.4,
+          pointerEvents: 'none',
         }}>
           Loading terrain…
         </div>
@@ -105,8 +118,6 @@ export default function App() {
 
       <WeekScrubber week={week} onChange={setWeek} />
       {inspecting && <Inspector data={inspecting} onClose={() => setInspecting(null)} />}
-
-      {/* Legend */}
       <TemperatureLegend />
     </div>
   )
@@ -121,7 +132,6 @@ function TemperatureLegend() {
     { t:  20, label:  '20°', color: '#EBD047' },
     { t:  30, label:  '30°', color: '#E06019' },
   ]
-
   return (
     <div style={{
       position: 'absolute',
