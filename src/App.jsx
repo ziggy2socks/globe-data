@@ -26,8 +26,15 @@ export default function App() {
     v.imageryLayers.removeAll()
     v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
 
+    // Step 2: paper background
+    v.scene.skyBox.show = false
+    v.scene.sun.show = false
+    v.scene.moon.show = false
+    v.scene.skyAtmosphere.show = false
+    v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+
     return () => { if (!v.isDestroyed()) v.destroy() }
   }, [])
 
-  return <div ref={containerRef} style={{ width: '100vw', height: '100vh' }} />
+  return <div ref={containerRef} style={{ width: '100vw', height: '100vh', background: '#edecea' }} />
 }
