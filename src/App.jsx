@@ -22,13 +22,11 @@ export default function App() {
     let destroyed = false
 
     async function init() {
-      // Terrain provider must be awaited in Cesium 1.100+
-      const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1)
       if (destroyed) return
 
       v = new Cesium.Viewer(containerRef.current, {
         baseLayer: false,           // no Bing imagery
-        terrain,
+        terrain: Cesium.Terrain.fromWorldTerrain(),
         animation: false,
         baseLayerPicker: false,
         fullscreenButton: false,
