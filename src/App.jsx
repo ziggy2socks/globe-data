@@ -17,79 +17,81 @@ export default function App() {
   useTemperatureLayer(viewer, week)
 
   useEffect(() => {
-    if (!containerRef.current || viewer) return
+    if (!containerRef.current) return
+    let v = null
+    let destroyed = false
 
-    // Wait one frame so the container has rendered and has real pixel dimensions
-    const raf = requestAnimationFrame(() => {
-    const v = new Cesium.Viewer(containerRef.current, {
-      // No default imagery — we supply our own
-      baseLayer: false,
-      // Terrain streaming from Ion
-      terrainProvider: new Cesium.CesiumTerrainProvider({
-        url: Cesium.IonResource.fromAssetId(1),
-      }),
-      // Strip all UI chrome
-      animation: false,
-      baseLayerPicker: false,
-      fullscreenButton: false,
-      geocoder: false,
-      homeButton: false,
-      infoBox: false,
-      sceneModePicker: false,
-      selectionIndicator: false,
-      timeline: false,
-      navigationHelpButton: false,
-      creditContainer: document.createElement('div'),
-    })
+    async function init() {
+      // Terrain provider must be awaited in Cesium 1.100+
+      const terrain = await Cesium.CesiumTerrainProvider.fromIonAssetId(1)
+      if (destroyed) return
 
-    // Paper aesthetic
-    v.scene.skyBox.show = false
-    v.scene.sun.show = false
-    v.scene.moon.show = false
-    v.scene.skyAtmosphere.show = false
-    v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
-    v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
-    v.scene.globe.enableLighting = false
-
-    // Starting camera: tilted over North America
-    v.camera.setView({
-      destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
-      orientation: {
-        heading: Cesium.Math.toRadians(0),
-        pitch: Cesium.Math.toRadians(-45),
-        roll: 0,
-      },
-    })
-
-    // Click-to-inspect
-    const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
-    handler.setInputAction((click) => {
-      const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
-      if (!cartesian) return
-      const carto = Cesium.Cartographic.fromCartesian(cartesian)
-      setInspecting({
-        lat: Cesium.Math.toDegrees(carto.latitude).toFixed(3),
-        lon: Cesium.Math.toDegrees(carto.longitude).toFixed(3),
-        elevation: (carto.height / 1000).toFixed(1),
+      v = new Cesium.Viewer(containerRef.current, {
+        baseLayer: false,           // no Bing imagery
+        terrain,
+        animation: false,
+        baseLayerPicker: false,
+        fullscreenButton: false,
+        geocoder: false,
+        homeButton: false,
+        infoBox: false,
+        sceneModePicker: false,
+        selectionIndicator: false,
+        timeline: false,
+        navigationHelpButton: false,
+        creditContainer: document.createElement('div'),
       })
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
 
-    // Loading state
-    const tileUnsub = v.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
-      if (q === 0) setLoading(false)
-    })
+      // Paper aesthetic
+      v.scene.skyBox.show = false
+      v.scene.sun.show = false
+      v.scene.moon.show = false
+      v.scene.skyAtmosphere.show = false
+      v.scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
+      v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
+      v.scene.globe.enableLighting = false
 
-    setViewer(v)
-    }) // end requestAnimationFrame
+      // Starting camera: tilted over North America
+      v.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(-80, 30, 18000000),
+        orientation: {
+          heading: Cesium.Math.toRadians(0),
+          pitch: Cesium.Math.toRadians(-45),
+          roll: 0,
+        },
+      })
+
+      // Click-to-inspect
+      const handler = new Cesium.ScreenSpaceEventHandler(v.scene.canvas)
+      handler.setInputAction((click) => {
+        const cartesian = v.camera.pickEllipsoid(click.position, v.scene.globe.ellipsoid)
+        if (!cartesian) return
+        const carto = Cesium.Cartographic.fromCartesian(cartesian)
+        setInspecting({
+          lat: Cesium.Math.toDegrees(carto.latitude).toFixed(3),
+          lon: Cesium.Math.toDegrees(carto.longitude).toFixed(3),
+          elevation: (carto.height / 1000).toFixed(1),
+        })
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
+
+      // Loading indicator
+      v.scene.globe.tileLoadProgressEvent.addEventListener((q) => {
+        if (q === 0) setLoading(false)
+      })
+
+      if (!destroyed) setViewer(v)
+    }
+
+    init().catch(err => console.error('Cesium init failed:', err))
 
     return () => {
-      cancelAnimationFrame(raf)
+      destroyed = true
+      if (v && !v.isDestroyed()) v.destroy()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {/* Cesium mounts directly into this div */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
       {loading && (
