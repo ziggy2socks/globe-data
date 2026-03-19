@@ -4,3 +4,11 @@
 .cesium-infoBox { display: none !important; }
 .cesium-viewer-animationContainer { display: none !important; }
 .cesium-viewer-timelineContainer { display: none !important; }
+
+/* Paper background — override Cesium's black space */
+.cesium-widget,
+.cesium-widget canvas,
+.cesium-viewer,
+.cesium-viewer-cesiumWidgetContainer {
+  background: #edecea !important;
+}

@@ -42,19 +42,25 @@ export default function App() {
         creditContainer: document.createElement('div'),
       })
 
-      // Paper aesthetic — set synchronously before first render
+      // Paper aesthetic
       const scene = v.scene
-      scene.skyBox.show = false
-      scene.sun.show = false
+      scene.skyBox.destroy()
+      scene.skyBox = false
+      scene.sun.destroy()
+      scene.sun = false
       scene.moon.show = false
       scene.skyAtmosphere.show = false
       scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
       scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
       scene.globe.enableLighting = false
-      // Force background color — Cesium uses this for the space behind the globe
-      v.scene.postRender.addEventListener(() => {
-        scene.backgroundColor = Cesium.Color.fromCssColorString('#edecea')
-      })
+      // Belt-and-suspenders: CSS background on the canvas element
+      if (v.canvas) {
+        v.canvas.style.background = '#edecea'
+      }
+      // And on the cesium-widget div
+      if (containerRef.current) {
+        containerRef.current.style.background = '#edecea'
+      }
 
       // Starting camera: tilted over North America
       v.camera.setView({
@@ -99,8 +105,8 @@ export default function App() {
   }, [])
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}>
-      <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: '#edecea' }}>
+      <div ref={containerRef} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#edecea' }} />
 
       {loading && (
         <div style={{
