@@ -22,6 +22,10 @@ export default function App() {
       creditContainer: document.createElement('div'),
     })
 
+    // Step 1: remove satellite imagery, set grey globe
+    v.imageryLayers.removeAll()
+    v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
+
     return () => { if (!v.isDestroyed()) v.destroy() }
   }, [])
 
