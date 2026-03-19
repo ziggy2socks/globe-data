@@ -19,6 +19,8 @@ export default function App() {
   useEffect(() => {
     if (!containerRef.current || viewer) return
 
+    // Wait one frame so the container has rendered and has real pixel dimensions
+    const raf = requestAnimationFrame(() => {
     const v = new Cesium.Viewer(containerRef.current, {
       // No default imagery — we supply our own
       baseLayer: false,
@@ -78,18 +80,17 @@ export default function App() {
     })
 
     setViewer(v)
+    }) // end requestAnimationFrame
 
     return () => {
-      handler.destroy()
-      tileUnsub()
-      if (!v.isDestroyed()) v.destroy()
+      cancelAnimationFrame(raf)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ position: 'absolute', inset: 0 }}>
       {/* Cesium mounts directly into this div */}
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
       {loading && (
         <div style={{
