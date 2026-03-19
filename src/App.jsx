@@ -21,23 +21,18 @@ export default function App() {
       timeline: false,
       navigationHelpButton: false,
       creditContainer: document.createElement('div'),
-      // Transparent WebGL context so the div background shows through
-      contextOptions: {
-        webgl: { alpha: true }
-      },
+      skyBox: false,         // pass false here — the ONLY way to truly disable skybox
+      skyAtmosphere: false,
+      contextOptions: { webgl: { alpha: true } },
     })
 
     // Step 1: remove satellite imagery, set grey globe
     v.imageryLayers.removeAll()
     v.scene.globe.baseColor = Cesium.Color.fromCssColorString('#d8d4cf')
 
-    // Step 2: paper background
-    v.scene.skyBox.show = false
+    // Step 2: paper background (skyBox/skyAtmosphere disabled in constructor above)
     v.scene.sun.show = false
     v.scene.moon.show = false
-    v.scene.skyAtmosphere.show = false
-    // With alpha:true WebGL context, canvas is transparent where Cesium doesn't draw.
-    // The div background color (#edecea) shows through.
 
     return () => { if (!v.isDestroyed()) v.destroy() }
   }, [])
